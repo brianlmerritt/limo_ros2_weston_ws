@@ -1,12 +1,19 @@
-FROM westonrobot/ros:humble-ci
-
+#FROM westonrobot/ros:humble-ci
+#FROM ros_limo_realsense:r36.2.0-realsense
+FROM l4t-ros2:humble
 ENV DEBIAN_FRONTEND=noninteractive
+ENV USERNAME jetson
+ENV HOME /home/$USERNAME
+USER $USERNAME
+WORKDIR /home/$USERNAME
+SHELL ["/bin/bash", "-l", "-c"]
+
 # Set up user account
-RUN useradd -ms /bin/bash ros && echo "ros:ros" | chpasswd && adduser ros sudo
-RUN adduser ros video
+#RUN useradd -ms /bin/bash ros && echo "ros:ros" | chpasswd && adduser ros sudo
+#RUN adduser ros video
 # Builder dependencies installation
-RUN apt-get update \
-    && apt-get install -qq -y --no-install-recommends \
+RUN sudo apt-get update \
+    && sudo apt-get install -qq -y --no-install-recommends \
     build-essential \
     cmake \
     git \
@@ -43,13 +50,13 @@ RUN apt-get update \
     libgflags-dev \
     nlohmann-json3-dev \
     ros-humble-image-* \
-    && rm -rf /var/lib/apt/lists/*
+    && sudo rm -rf /var/lib/apt/lists/*
 RUN git clone https://github.com/YDLIDAR/YDLidar-SDK.git &&\
     mkdir -p YDLidar-SDK/build && \
     cd YDLidar-SDK/build &&\
     cmake ..&&\
     make &&\
-    make install &&\
+    sudo make install &&\
     cd .. &&\
     pip install . &&\
     cd .. && rm -r YDLidar-SDK 
@@ -81,4 +88,11 @@ ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES graphics,utility,compute
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
-RUN echo "source /opt/ros/humble/setup.bash" >> /etc/bash.bashrc
+RUN echo "source /opt/ros/humble/setup.bash" >> $HOME/.bashrc
+
+RUN cd $HOME &&\
+    git clone https://github.com/brianlmerritt/limo_ros2_weston_ws.git &&\
+    cd limo_ros2_weston_ws &&\
+    source /opt/ros/humble/setup.bash &&\
+    colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release &&\
+    echo "source $HOME/limo_ros2_weston_ws/install/setup.bash" >> $HOME/.bashrc
